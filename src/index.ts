@@ -1,53 +1,43 @@
-import { credentials } from '@grpc/grpc-js';
-import { deserialize, Document } from 'bson';
-import { RustbaseClient, QueryResultType } from '@models/rustbase';
+import { QueryBuilder } from './queryBuilder';
+import { Rustbase } from './engine';
 
 export class Client {
-    private _database?: string;
-    private readonly client: RustbaseClient;
+    private _database: string;
+    private readonly client: Rustbase;
 
-    constructor(address: string) {
-        const client = new RustbaseClient(
-            address,
-            credentials.createInsecure()
-        );
+    constructor(address: string, database: string) {
+        const client = new Rustbase(address);
 
         this.client = client;
+        this._database = database;
     }
 
-    database(name: string) {
+    database(name: string): Client {
         this._database = name;
+
+        return this;
     }
 
-    async query(query: string) {
+    getDatabase() {
+        return this._database;
+    }
+
+    async query(query: QueryBuilder | string) {
         const database = this._database;
 
         if (!database) {
             throw new Error('No database selected');
         }
 
-        return await new Promise<Document>((resolve, reject) => {
-            this.client.query(
-                {
-                    database,
-                    query,
-                },
-                (error, response) => {
-                    if (error) {
-                        reject(error);
-                    }
+        if (typeof query === 'string') {
+            return await this.client.request(query, database);
+        } else {
+            return await this.client.request(query.query(), database);
+        }
+    }
 
-                    if (
-                        response.resultType === QueryResultType.OK &&
-                        response.bson
-                    ) {
-                        resolve(deserialize(response.bson));
-                    } else if (response.resultType !== QueryResultType.OK) {
-                        reject(new Error(response.errorMessage));
-                    }
-                }
-            );
-        });
+    close() {
+        this.client.close();
     }
 }
 
@@ -58,5 +48,7 @@ export function connect(uri: string): Client {
         throw new Error('Invalid protocol');
     }
 
-    return new Client(url.host);
+    const database = url.pathname.split('/')[1];
+
+    return new Client(url.host, database);
 }
