@@ -8,10 +8,9 @@ npm install rustbase-js
 
 # Usage
 ```js
-const { Client } = require('rustbase-js');
+const { connect } = require('rustbase-js');
 
-const rustbase = new Client("rustbase://localhost:23561");
-
+const rustbase = connect("rustbase://localhost:23561/supercooldatabase");
 ```
 
 # Development
@@ -24,7 +23,7 @@ yarn run build:proto # Build the protobuf files
 
 # Roadmap
 - [x] Send queries
-- [ ] Build a query builder
+- [x] Build a query builder
 
 
 # License
