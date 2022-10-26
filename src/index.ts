@@ -52,3 +52,5 @@ export function connect(uri: string): Client {
 
     return new Client(url.host, database);
 }
+
+export { QueryBuilder } from './queryBuilder';
