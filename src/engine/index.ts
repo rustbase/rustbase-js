@@ -1,56 +1,68 @@
-import { credentials } from '@grpc/grpc-js';
-import { deserialize, Document } from 'bson';
-import { QueryResultType, RustbaseClient } from '@models/rustbase';
+import { deserialize, serialize } from 'bson';
+import net from 'net';
 
+type Response = {
+    message: string | null;
+    body: any;
+    status:
+        | 'Ok'
+        | 'Error'
+        | 'DatabaseNotFound'
+        | 'KeyNotExists'
+        | 'KeyAlreadyExists'
+        | 'SyntaxError'
+        | 'InvalidQuery'
+        | 'InvalidBody';
+};
 export class Rustbase {
-    private readonly client: RustbaseClient;
+    private readonly client: net.Socket;
 
-    constructor(address: string) {
-        const client = new RustbaseClient(
-            address,
-            credentials.createInsecure()
-        );
+    constructor(host: string, port: number = 23561, callback?: () => void) {
+        const client = new net.Socket();
+
+        client.connect(port, host, () => {
+            if (callback) {
+                callback();
+            }
+        });
 
         this.client = client;
     }
 
     close() {
-        this.client.close();
+        this.client.end();
     }
 
     async request(query: string, database: string) {
-        return await new Promise<Document>((resolve, reject) => {
-            this.client.query(
-                {
-                    database,
-                    query,
-                },
-                (error, response) => {
-                    if (error) {
-                        reject(error);
-                    }
+        const doc = {
+            body: {
+                database,
+                query,
+            },
+        };
 
-                    switch (response.resultType) {
-                        case QueryResultType.OK:
-                            if (response.bson) {
-                                resolve(deserialize(response.bson));
-                            }
-                            break;
+        const buffer = serialize(doc);
 
-                        case QueryResultType.ERROR:
-                            reject(new Error(response.errorMessage));
-                            break;
+        this.client.write(buffer);
 
-                        case QueryResultType.NOT_FOUND:
-                            reject(new Error('not.found'));
-                            break;
+        return new Promise<any>((resolve, reject) => {
+            this.client.once('data', (data) => {
+                const doc = deserialize(data) as Response;
 
-                        default:
-                            reject(new Error('unknown.error'));
-                            break;
+                if (doc.body) {
+                    resolve(doc.body);
+                } else {
+                    if (doc.status === 'Ok') {
+                        resolve(undefined);
+                    } else {
+                        reject(doc.message ?? doc.status);
                     }
                 }
-            );
+            });
+
+            this.client.once('error', (err) => {
+                reject(err);
+            });
         });
     }
 }

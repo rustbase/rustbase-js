@@ -5,8 +5,8 @@ export class Client {
     private _database: string;
     private readonly client: Rustbase;
 
-    constructor(address: string, database: string) {
-        const client = new Rustbase(address);
+    constructor(address: string, port: number, database: string) {
+        const client = new Rustbase(address, port);
 
         this.client = client;
         this._database = database;
@@ -50,7 +50,7 @@ export function connect(uri: string): Client {
 
     const database = url.pathname.split('/')[1];
 
-    return new Client(url.host, database);
+    return new Client(url.hostname, parseInt(url.port), database);
 }
 
 export { QueryBuilder } from './queryBuilder';

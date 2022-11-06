@@ -19,10 +19,20 @@ export class QueryBuilder {
 
     update(key: string, value: any) {
         this._query = `update ${JSON.stringify(value)} in ${key}`;
+
+        return this;
     }
 
     delete(key: string) {
         this._query = `delete ${key}`;
+
+        return this;
+    }
+
+    list(database?: string) {
+        this._query = `list ${database}`;
+
+        return this;
     }
 
     query() {
