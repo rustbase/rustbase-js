@@ -10,7 +10,7 @@ npm install rustbase-js
 ```js
 const { connect } = require('rustbase-js');
 
-const rustbase = connect("rustbase://localhost:23561/supercooldatabase");
+const rustbase = connect("rustbase://<url>:23561/supercooldatabase");
 ```
 
 # Development
@@ -18,7 +18,6 @@ const rustbase = connect("rustbase://localhost:23561/supercooldatabase");
 git clone https://github.com/rustbase/rustbase-js
 cd rustbase-js 
 yarn install # Install dependencies
-yarn run build:proto # Build the protobuf files
 ```
 
 # Roadmap
