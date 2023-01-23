@@ -12,7 +12,9 @@
         "removeComments": true,
         "baseUrl": ".",
         "paths": {
-            "@models/*": ["src/models/*"]
+            "@engine/*": ["./src/engine/*"],
+            "@mock/*": ["./src/mock/*"],
+            "@src/*": ["./src/*"]
         }
     }
 }

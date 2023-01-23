@@ -1,32 +1,58 @@
 import { deserialize, serialize } from 'bson';
 import net from 'net';
+import tls from 'node:tls';
+import { ClientConfig } from '..';
 
-type Response = {
+export type Response = {
     message: string | null;
     body: any;
     status:
         | 'Ok'
         | 'Error'
-        | 'DatabaseNotFound'
-        | 'KeyNotExists'
-        | 'KeyAlreadyExists'
+        | 'NotFound'
+        | 'AlreadyExists'
         | 'SyntaxError'
         | 'InvalidQuery'
-        | 'InvalidBody';
+        | 'InvalidBody'
+        | 'InvalidBson'
+        | 'InvalidAuth'
+        | 'NotAuthorized'
+        | 'Reserved';
 };
+
 export class Rustbase {
-    private readonly client: net.Socket;
+    private readonly client: net.Socket | tls.TLSSocket;
 
-    constructor(host: string, port: number = 23561, callback?: () => void) {
-        const client = new net.Socket();
+    constructor(config: ClientConfig, callback?: () => void) {
+        if (!config.tls) {
+            const client = new net.Socket();
 
-        client.connect(port, host, () => {
-            if (callback) {
-                callback();
-            }
-        });
+            client.connect(config.port, config.host, () => {
+                if (callback) {
+                    callback();
+                }
+            });
 
-        this.client = client;
+            this.client = client;
+        } else {
+            const client = tls.connect(
+                {
+                    host: config.host,
+                    port: config.port,
+                    ca:
+                        typeof config.tls === 'object'
+                            ? config.tls.CAFile
+                            : undefined,
+                },
+                () => {
+                    if (callback) {
+                        callback();
+                    }
+                }
+            );
+
+            this.client = client;
+        }
     }
 
     close() {
@@ -49,14 +75,10 @@ export class Rustbase {
             this.client.once('data', (data) => {
                 const doc = deserialize(data) as Response;
 
-                if (doc.body) {
+                if (doc.status === 'Ok') {
                     resolve(doc.body);
                 } else {
-                    if (doc.status === 'Ok') {
-                        resolve(undefined);
-                    } else {
-                        reject(doc.message ?? doc.status);
-                    }
+                    reject(doc.message ?? doc.status);
                 }
             });
 
